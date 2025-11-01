@@ -69,8 +69,12 @@ async def ingest_document(
     vectors = embedder.embed([c.text for c in chunk_models])
     vs = get_vector_store()
     payloads = []
+    
+    import uuid
     for c, vec in zip(chunk_models, vectors):
-        point_id = f"{doc.id}:{c.index_in_document}"
+        # Generate a UUID for the vector store
+        point_id = str(uuid.uuid4())
+        # Store the UUID in the chunk for reference
         c.embedding_id = point_id
         payloads.append((point_id, vec, {"chunk_id": c.id, "document_id": doc.id, "text": c.text}))
     vs.upsert(payloads)
