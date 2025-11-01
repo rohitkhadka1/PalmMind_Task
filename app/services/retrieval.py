@@ -31,19 +31,19 @@ class RAGService:
                     r.text = id_to_text.get(r.chunk_id, "")
 
         context = "\n\n".join([f"[Doc {r.document_id} | Score {r.score:.3f}]\n{r.text}" for r in results])
-        history = self.memory.get(session_id)
+        history = await self.memory.get_chat_history(session_id)
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": f"Context:\n{context}"},
         ]
-        for role, content in history[-10:]:
-            messages.append({"role": role, "content": content})
+        # Convert ChatMessage objects to dict format for LLM
+        for msg in history[-10:]:
+            messages.append({"role": msg.role, "content": msg.content})
         messages.append({"role": "user", "content": query})
 
-        answer = self.llm.generate(messages)
-        self.memory.append(session_id, "user", query)
-        self.memory.append(session_id, "assistant", answer)
+        answer = await self.llm.generate(messages)
+        await self.memory.add_interaction(session_id, query, answer)
 
         return answer, chunk_ids
 

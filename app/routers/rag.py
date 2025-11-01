@@ -27,7 +27,6 @@ async def rag_root():
     })
 
 
-@router.post("/query", response_model=RAGQueryResponse)
 @router.get("/query", summary="Get query endpoint information", description="Returns information about how to use the query endpoint")
 async def rag_query_info():
     return JSONResponse({
@@ -39,7 +38,7 @@ async def rag_query_info():
         }
     })
 
-@router.post("/query", response_model=RAGQueryResponse)
+@router.post("/query", response_model=RAGQueryResponse, description="Submit a query to the RAG system")
 async def rag_query(payload: RAGQueryRequest, db: AsyncSession = Depends(get_db)):
     try:
         answer, sources = await rag_service.query(

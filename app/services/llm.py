@@ -1,12 +1,9 @@
 from __future__ import annotations
 
+import google.generativeai as genai
 from typing import Iterable
+import asyncio
 from ..config import settings
-
-try:
-    from openai import OpenAI  # type: ignore
-except Exception:  # pragma: no cover - optional
-    OpenAI = None  # type: ignore
 
 
 SYSTEM_PROMPT = (
@@ -17,38 +14,38 @@ SYSTEM_PROMPT = (
 
 class LLMProvider:
     def __init__(self):
-        self.provider = settings.llm_provider
-        self.openai_model = settings.openai_model
-        self._client = None
-        # OpenAI (native)
-        if self.provider == "openai" and settings.openai_api_key and OpenAI is not None:
-            self._client = OpenAI(api_key=settings.openai_api_key)
-        # OpenRouter via OpenAI SDK
-        elif self.provider == "openrouter" and settings.openrouter_key and OpenAI is not None:
-            default_headers = {}
-            if settings.app_public_url:
-                default_headers["HTTP-Referer"] = settings.app_public_url
-            if settings.app_title:
-                default_headers["X-Title"] = settings.app_title
-            self._client = OpenAI(
-                base_url=settings.openrouter_base_url,
-                api_key=settings.openrouter_key,
-                default_headers=default_headers or None,
-            )
+        # Configure Gemini
+        genai.configure(api_key=settings.gemini_api_key)
+        
+        # Create model instance
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # For history tracking
+        self.chat = self.model.start_chat(history=[])
 
-    def generate(self, messages: list[dict[str, str]]) -> str:
-        if self._client:
-            model = (
-                settings.openrouter_model
-                if self.provider == "openrouter"
-                else self.openai_model
+    async def generate(self, messages: list[dict[str, str]]) -> str:
+        try:
+            # Convert the message format to work with Gemini
+            last_user_message = next(
+                (msg["content"] for msg in reversed(messages) if msg["role"] == "user"),
+                None
             )
-            resp = self._client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.2,
+            
+            if not last_user_message:
+                return "No user message found"
+            
+            # Since Gemini's generate_content is synchronous, run it in a thread pool
+            response = await asyncio.to_thread(
+                self.chat.send_message,
+                last_user_message,
+                generation_config={"temperature": 0.2}
             )
-            return resp.choices[0].message.content or ""
+            
+            return response.text
+            
+        except Exception as e:
+            print(f"Error in generate: {e}")
+            raise
         # Local naive fallback: extract sentences containing query keywords
         user_last = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
         keywords = {w.lower() for w in user_last.split() if len(w) > 3}

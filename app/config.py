@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     chat_history_max_turns: int = Field(default=15)
 
     # LLM
-    llm_provider: str = Field(default="openai")  # openai|openrouter|local
+    llm_provider: str = Field(default="gemini")  # gemini|openai|openrouter|local
+    gemini_api_key: str | None = Field(default=None)
     openai_api_key: str | None = Field(default=None)
     openai_model: str = Field(default="gpt-4o-mini")
     # OpenRouter via OpenAI SDK

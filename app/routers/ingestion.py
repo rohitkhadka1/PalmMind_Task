@@ -51,12 +51,14 @@ async def upload_info():
         """
     })
 
+from ..schemas import ChunkingStrategyRequest
+
 @router.post("/upload", response_model=IngestionResponse)
 async def upload_document(
     file: UploadFile = File(...),
-    strategy: str = Form(default="recursive"),
-    fixed_size: int = Form(default=500),
-    fixed_overlap: int = Form(default=50),
+    strategy: str = Form(default="recursive", description="Chunking strategy: 'recursive' or 'fixed'"),
+    fixed_size: int = Form(default=500, ge=50, le=2000, description="Chunk size (50-2000)"),
+    fixed_overlap: int = Form(default=50, ge=0, description="Overlap size (must be less than chunk size)"),
     db: AsyncSession = Depends(get_db),
 ):
     # Validate file type
